@@ -9,20 +9,21 @@
 <style>
   :root{
     --bg-deep:#150E09;
-    --bg-surface:#231710;
-    --bg-surface-2:#2E1F15;
     --amber:#E8A33D;
     --amber-dim:#8C6A34;
     --red:#C4432B;
     --cream:#F3E9DC;
-    --muted:#9A8873;
-    --line:#3A2A1C;
+    --muted:#B3A491;
     --good:#7FB069;
+    --glass-bg: rgba(255,255,255,0.055);
+    --glass-bg-strong: rgba(255,255,255,0.09);
+    --glass-border: rgba(255,255,255,0.16);
+    --glass-hi: rgba(255,255,255,0.35);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background: radial-gradient(ellipse 120% 80% at 50% -10%, #2A1B10 0%, var(--bg-deep) 55%);
+    background:#150E09;
     min-height:100vh;
     color:var(--cream);
     font-family:'Space Grotesk', sans-serif;
@@ -30,106 +31,167 @@
     justify-content:center;
     padding:0 0 40px;
     -webkit-tap-highlight-color:transparent;
+    overflow-x:hidden;
+    position:relative;
   }
-  .app{ width:100%; max-width:460px; padding:22px 18px 0; }
+
+  /* ---- animated background ---- */
+  .bg-blob{
+    position:fixed; border-radius:50%; filter:blur(70px); z-index:0; pointer-events:none;
+    opacity:.55;
+  }
+  .bg-blob.b1{ width:380px;height:380px; background:radial-gradient(circle,#E8A33D,transparent 70%); top:-120px; left:-100px; animation:float1 20s ease-in-out infinite alternate; }
+  .bg-blob.b2{ width:340px;height:340px; background:radial-gradient(circle,#C4432B,transparent 70%); bottom:-80px; right:-100px; animation:float2 24s ease-in-out infinite alternate; }
+  .bg-blob.b3{ width:260px;height:260px; background:radial-gradient(circle,#7FB069,transparent 70%); top:40%; right:-80px; opacity:.25; animation:float3 26s ease-in-out infinite alternate; }
+  @keyframes float1{ from{ transform:translate(0,0); } to{ transform:translate(60px,80px) scale(1.1); } }
+  @keyframes float2{ from{ transform:translate(0,0); } to{ transform:translate(-50px,-60px) scale(1.15); } }
+  @keyframes float3{ from{ transform:translate(0,0); } to{ transform:translate(-40px,50px) scale(0.9); } }
+
+  .app{ width:100%; max-width:460px; padding:22px 18px 0; position:relative; z-index:1; }
   .screen{ display:none; }
-  .screen.active{ display:block; animation:fadeIn .35s ease; }
-  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+  .screen.active{ display:block; animation:fadeIn .4s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
 
-  .topbar{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; }
-  .wordmark{ font-family:'Fraunces', serif; font-weight:700; font-size:26px; }
+  .rise{ opacity:0; transform:translateY(14px); animation:rise .55s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes rise{ to{ opacity:1; transform:none; } }
+
+  /* ---- glass base ---- */
+  .glass{
+    background: var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    border-radius:20px;
+    box-shadow: 0 10px 34px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+    position:relative;
+    overflow:hidden;
+  }
+  .glass::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg,transparent,var(--glass-hi),transparent);
+    opacity:.5;
+  }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .wordmark{ font-family:'Fraunces', serif; font-weight:700; font-size:27px; }
   .wordmark span{ color:var(--amber); font-style:italic; }
-  .stats{ display:flex; gap:14px; font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--muted); text-align:right; }
-  .stats b{ display:block; color:var(--amber); font-size:16px; font-weight:600; }
+  .stat-chips{ display:flex; gap:8px; }
+  .stat-chip{
+    padding:7px 12px; border-radius:14px;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted); text-align:center;
+  }
+  .stat-chip b{ display:block; color:var(--amber); font-size:15px; font-weight:600; transition:transform .25s ease; }
+  .stat-chip b.pulse{ animation:pop .4s ease; }
+  @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.3);} 100%{transform:scale(1);} }
 
-  .tagline{ color:var(--muted); font-size:14px; margin:-10px 0 26px; }
+  /* ---- hero ---- */
+  .hero{ padding:26px 22px 24px; margin-bottom:16px; text-align:center; }
+  .hero-vinyl{ width:64px;height:64px; margin:0 auto 14px; position:relative; }
+  .hero-vinyl .disc{
+    width:100%;height:100%;border-radius:50%;
+    background:repeating-radial-gradient(circle at center,#111 0px,#111 2px,#1c1c1c 2px,#1c1c1c 4px);
+    animation:spin 6s linear infinite;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 20px -6px rgba(0,0,0,.6);
+  }
+  .hero-vinyl .lbl{ width:36%;height:36%;border-radius:50%; background:radial-gradient(circle at 40% 35%,#F0B85C,var(--red) 75%); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .hero h1{ font-family:'Fraunces',serif; font-size:21px; font-weight:600; margin:0 0 8px; }
+  .hero p{ margin:0; font-size:13.5px; color:var(--muted); line-height:1.6; max-width:320px; margin:0 auto; }
 
   /* ---- difficulty toggle ---- */
-  .diff-toggle{
-    display:flex; background:var(--bg-surface); border:1px solid var(--line);
-    border-radius:12px; padding:4px; margin-bottom:26px;
-  }
+  .diff-toggle{ display:flex; padding:4px; margin-bottom:16px; border-radius:16px; }
   .diff-toggle button{
     flex:1; border:none; background:transparent; color:var(--muted);
     font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px;
-    padding:10px 0; border-radius:9px; cursor:pointer;
+    padding:11px 0; border-radius:12px; cursor:pointer; transition:all .25s ease;
   }
-  .diff-toggle button.active{ background:var(--amber); color:#1B1206; }
+  .diff-toggle button.active{ background:var(--amber); color:#1B1206; box-shadow:0 4px 14px -4px rgba(232,163,61,.6); }
 
-  /* ---- mode cards ---- */
-  .mode-card{
-    display:block; width:100%; text-align:left;
-    background:var(--bg-surface); border:1px solid var(--line); border-radius:16px;
-    padding:20px; margin-bottom:14px; cursor:pointer; color:var(--cream);
+  /* ---- quick chips ---- */
+  .section-label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:4px 2px 10px; }
+  .chip-scroll{ display:flex; gap:9px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:6px; scrollbar-width:none; }
+  .chip-scroll::-webkit-scrollbar{ display:none; }
+  .quick-chip{
+    flex:0 0 auto; padding:10px 16px; border-radius:14px; cursor:pointer;
+    font-size:13px; font-weight:600; color:var(--cream); white-space:nowrap;
+    transition: transform .15s ease, background .2s ease;
   }
-  .mode-card:active{ transform:scale(.98); }
-  .mode-card .icon{ font-size:26px; }
-  .mode-card h3{ font-family:'Fraunces',serif; font-size:19px; margin:8px 0 4px; font-weight:600; }
-  .mode-card p{ margin:0; font-size:13px; color:var(--muted); line-height:1.5; }
+  .quick-chip:active{ transform:scale(.94); background:var(--glass-bg-strong); }
+
+  /* ---- mode card (hero CTA) ---- */
+  .mode-card{
+    display:block; width:100%; text-align:left; padding:22px; margin-bottom:18px;
+    cursor:pointer; color:var(--cream); border:none; font-family:inherit;
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .mode-card:active{ transform:scale(.985); }
+  .mode-card .row{ display:flex; align-items:center; gap:14px; }
+  .mode-card .icon-wrap{
+    width:52px;height:52px;border-radius:16px; flex-shrink:0;
+    background: linear-gradient(135deg, var(--amber), var(--red));
+    display:flex;align-items:center;justify-content:center; font-size:24px;
+    box-shadow: 0 6px 18px -6px rgba(232,163,61,.5);
+  }
+  .mode-card h3{ font-family:'Fraunces',serif; font-size:18px; margin:0 0 3px; font-weight:600; }
+  .mode-card p{ margin:0; font-size:12.5px; color:var(--muted); line-height:1.5; }
+  .mode-card .arrow{ margin-left:auto; opacity:.5; font-size:18px; }
+
+  /* ---- how it works ---- */
+  .steps{ display:flex; flex-direction:column; gap:10px; margin-bottom:6px; }
+  .step{ display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:16px; }
+  .step .num{
+    width:30px;height:30px;border-radius:10px; flex-shrink:0;
+    background:var(--glass-bg-strong); color:var(--amber); font-family:'IBM Plex Mono',monospace;
+    font-weight:600; font-size:13px; display:flex;align-items:center;justify-content:center;
+  }
+  .step .txt{ font-size:13px; color:var(--cream); }
+  .step .txt b{ color:var(--amber); }
 
   .back-row{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
   .back-btn{
-    background:var(--bg-surface); border:1px solid var(--line); color:var(--cream);
-    width:36px;height:36px;border-radius:10px; cursor:pointer; font-size:16px;
-    display:flex;align-items:center;justify-content:center;
+    width:38px;height:38px;border-radius:12px; cursor:pointer; font-size:16px; color:var(--cream);
+    display:flex;align-items:center;justify-content:center; border:1px solid var(--glass-border);
+    background:var(--glass-bg);
   }
   .screen-title{ font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
 
-  /* ---- search (artist mode) ---- */
-  .search-box{
-    background:var(--bg-surface); border:1px solid var(--line); border-radius:12px;
-    padding:13px 14px; display:flex; gap:8px; align-items:center; margin-bottom:12px;
-  }
-  .search-box input{
-    flex:1; background:transparent; border:none; outline:none; color:var(--cream);
-    font-family:'Space Grotesk',sans-serif; font-size:15px;
-  }
+  /* ---- search ---- */
+  .search-box{ padding:14px 16px; display:flex; gap:8px; align-items:center; margin-bottom:14px; }
+  .search-box input{ flex:1; background:transparent; border:none; outline:none; color:var(--cream); font-family:'Space Grotesk',sans-serif; font-size:15px; }
   .result-list{ display:flex; flex-direction:column; gap:8px; }
-  .result-item{
-    background:var(--bg-surface); border:1px solid var(--line); border-radius:12px;
-    padding:12px 14px; display:flex; justify-content:space-between; align-items:center;
-    cursor:pointer;
-  }
-  .result-item:active{ background:var(--bg-surface-2); }
+  .result-item{ padding:13px 15px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:transform .15s ease; }
+  .result-item:active{ transform:scale(.98); background:var(--glass-bg-strong); }
   .result-item .name{ font-weight:600; font-size:14.5px; }
   .result-item .type{ font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace; }
-  .empty-hint{ color:var(--muted); font-size:13px; text-align:center; padding:30px 10px; line-height:1.6; }
-
-  /* ---- chart region chips ---- */
-  .region-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .region-card{
-    background:var(--bg-surface); border:1px solid var(--line); border-radius:14px;
-    padding:18px 14px; text-align:center; cursor:pointer; color:var(--cream);
-  }
-  .region-card:active{ transform:scale(.97); }
-  .region-card .flag{ font-size:28px; display:block; margin-bottom:6px; }
-  .region-card .rname{ font-weight:600; font-size:13.5px; }
-  .region-card .rsub{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .empty-hint{ color:var(--muted); font-size:13px; text-align:center; padding:30px 14px; line-height:1.6; }
 
   /* ---- turntable ---- */
   .game-header{ text-align:center; margin-bottom:6px; }
   .game-context{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber); letter-spacing:.03em; }
   .turntable{ position:relative; width:100%; aspect-ratio:1/1; max-width:280px; margin:6px auto 8px; display:flex; align-items:center; justify-content:center; }
-  .mat{ position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 35% 30%, #3A2716, #1B120B 70%); box-shadow:inset 0 0 0 1px var(--line), 0 18px 40px -12px #000; }
-  .record{ position:relative; width:82%; height:82%; border-radius:50%; background:repeating-radial-gradient(circle at center, #111 0px,#111 2px,#1c1c1c 2px,#1c1c1c 4px); box-shadow:0 0 0 1px #000; display:flex; align-items:center; justify-content:center; animation:spin 3.2s linear infinite; animation-play-state:paused; }
+  .mat{ position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 35% 30%, #3A2716, #1B120B 70%); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), 0 18px 40px -12px #000; }
+  .record{ position:relative; width:82%; height:82%; border-radius:50%; background:repeating-radial-gradient(circle at center, #111 0px,#111 2px,#1c1c1c 2px,#1c1c1c 4px); box-shadow:0 0 0 1px #000; display:flex; align-items:center; justify-content:center; animation:spin2 3.2s linear infinite; animation-play-state:paused; }
   .record.spinning{ animation-play-state:running; }
   .label{ width:38%; height:38%; border-radius:50%; background:radial-gradient(circle at 40% 35%, #F0B85C, var(--red) 75%); display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #170F09; }
   .label::after{ content:""; width:9px;height:9px;border-radius:50%; background:#170F09; }
   .tonearm{ position:absolute; top:-4%; right:2%; width:34%; height:65%; transform-origin:88% 8%; transform:rotate(-24deg); transition:transform .5s cubic-bezier(.4,0,.2,1); pointer-events:none; }
   .tonearm.down{ transform:rotate(-2deg); }
   .tonearm svg{ width:100%; height:100%; overflow:visible; }
-  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes spin2{ to{ transform:rotate(360deg); } }
 
   .play-row{ display:flex; justify-content:center; margin:14px 0 6px; }
-  .play-btn{ width:64px;height:64px;border-radius:50%; background:var(--amber); border:none; display:flex;align-items:center;justify-content:center; cursor:pointer; box-shadow:0 8px 20px -6px rgba(232,163,61,.55); }
-  .play-btn:active{ transform:scale(.93); }
+  .play-btn{ width:66px;height:66px;border-radius:50%; background:var(--amber); border:none; display:flex;align-items:center;justify-content:center; cursor:pointer; box-shadow:0 8px 22px -6px rgba(232,163,61,.6); transition:transform .15s ease; }
+  .play-btn:active{ transform:scale(.9); }
   .play-btn:disabled{ opacity:.4; cursor:default; }
   .play-btn svg{ width:24px;height:24px; }
+  .play-btn.pulse-ring{ animation:ring 1.4s ease-out; }
+  @keyframes ring{ 0%{ box-shadow:0 0 0 0 rgba(232,163,61,.6); } 100%{ box-shadow:0 0 0 24px rgba(232,163,61,0); } }
 
   .grooves{ display:flex; gap:6px; margin:18px 0 4px; }
-  .groove{ flex:1; height:34px; border-radius:6px; background:repeating-linear-gradient(180deg,var(--bg-surface) 0 3px,var(--bg-surface-2) 3px 6px); border:1px solid var(--line); position:relative; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; }
+  .groove{ flex:1; height:34px; border-radius:8px; position:relative; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; border:1px solid var(--glass-border); background:var(--glass-bg); }
   .groove span{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); margin-bottom:3px; z-index:2; }
-  .groove .fill{ position:absolute; left:0; right:0; bottom:0; top:100%; background:linear-gradient(180deg,var(--amber),var(--amber-dim)); transition:top .25s ease; }
+  .groove .fill{ position:absolute; left:0; right:0; bottom:0; top:100%; background:linear-gradient(180deg,var(--amber),var(--amber-dim)); transition:top .3s ease; }
   .groove.played .fill{ top:0; }
   .groove.played span{ color:#3A2A10; font-weight:600; }
   .groove.current{ border-color:var(--amber); }
@@ -138,35 +200,37 @@
 
   .guess-zone{ margin-top:20px; position:relative; }
   .guess-row{ display:flex; gap:8px; }
-  input#guessInput{ flex:1; background:var(--bg-surface); border:1px solid var(--line); color:var(--cream); font-family:'Space Grotesk',sans-serif; font-size:15px; padding:13px 14px; border-radius:12px; outline:none; }
+  input#guessInput{ flex:1; border:1px solid var(--glass-border); background:var(--glass-bg); color:var(--cream); font-family:'Space Grotesk',sans-serif; font-size:15px; padding:14px; border-radius:14px; outline:none; transition:border-color .2s ease; }
   input#guessInput:focus{ border-color:var(--amber); }
   input#guessInput:disabled{ opacity:.5; }
-  .btn{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; border:none; border-radius:12px; padding:0 18px; cursor:pointer; white-space:nowrap; }
+  .btn{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; border:none; border-radius:14px; padding:0 18px; cursor:pointer; white-space:nowrap; transition:transform .15s ease; }
+  .btn:active{ transform:scale(.94); }
   .btn-guess{ background:var(--amber); color:#1B1206; }
   .btn-guess:disabled{ opacity:.4; }
-  .btn-skip{ background:transparent; border:1px solid var(--line); color:var(--muted); margin-top:8px; width:100%; padding:11px; }
+  .btn-skip{ background:var(--glass-bg); border:1px solid var(--glass-border); color:var(--muted); margin-top:8px; width:100%; padding:12px; border-radius:14px; }
   .btn-skip:disabled{ opacity:.3; }
 
-  .suggestions{ position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--bg-surface-2); border:1px solid var(--line); border-radius:12px; overflow:hidden; z-index:5; max-height:220px; overflow-y:auto; display:none; }
-  .suggestions.open{ display:block; }
-  .suggestion{ padding:11px 14px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--line); }
+  .suggestions{ position:absolute; top:calc(100% + 6px); left:0; right:0; border-radius:14px; overflow:hidden; z-index:5; max-height:220px; overflow-y:auto; display:none; }
+  .suggestions.open{ display:block; animation:rise .2s ease forwards; }
+  .suggestion{ padding:12px 15px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--glass-border); }
   .suggestion:last-child{ border-bottom:none; }
   .suggestion b{ color:var(--amber); font-weight:600; }
-  .suggestion:hover, .suggestion.active{ background:var(--bg-surface); }
+  .suggestion:active{ background:var(--glass-bg-strong); }
 
-  .reveal{ margin-top:18px; background:linear-gradient(90deg,var(--red),#8E2E1D); border-radius:14px; padding:14px 16px; display:none; align-items:center; gap:12px; animation:slideIn .4s cubic-bezier(.2,.8,.2,1); }
+  .reveal{ margin-top:18px; background:linear-gradient(90deg,var(--red),#8E2E1D); border-radius:16px; padding:14px 16px; display:none; align-items:center; gap:12px; animation:slideIn .45s cubic-bezier(.2,.8,.2,1); }
   .reveal.show{ display:flex; }
   @keyframes slideIn{ from{ transform:translateX(30px); opacity:0;} to{ transform:none; opacity:1;} }
-  .reveal img{ width:44px;height:44px;border-radius:6px; flex-shrink:0; background:#000; }
+  .reveal img{ width:44px;height:44px;border-radius:8px; flex-shrink:0; background:#000; }
   .reveal .info{ min-width:0; }
   .reveal .title{ font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .reveal .artist{ font-size:12.5px; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .reveal .result-tag{ margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; background:rgba(0,0,0,.28); padding:4px 8px; border-radius:6px; flex-shrink:0; }
+  .reveal .result-tag{ margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; background:rgba(0,0,0,.28); padding:4px 8px; border-radius:8px; flex-shrink:0; }
 
   .action-row{ display:flex; gap:8px; margin-top:12px; }
-  .next-btn, .share-btn{ flex:1; padding:13px; border-radius:12px; font-weight:700; display:none; border:none; cursor:pointer; font-family:'Space Grotesk',sans-serif; }
+  .next-btn, .share-btn{ flex:1; padding:13px; border-radius:14px; font-weight:700; display:none; border:none; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:transform .15s ease; }
+  .next-btn:active, .share-btn:active{ transform:scale(.96); }
   .next-btn{ background:var(--cream); color:#1B1206; }
-  .share-btn{ background:transparent; border:1px solid var(--amber); color:var(--amber); }
+  .share-btn{ background:var(--glass-bg); border:1px solid var(--amber); color:var(--amber); }
   .next-btn.show, .share-btn.show{ display:block; }
 
   .status{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--muted); margin-top:14px; min-height:16px; }
@@ -174,52 +238,76 @@
   .switch-link button{ background:none; border:none; color:var(--muted); font-size:12px; text-decoration:underline; cursor:pointer; font-family:'Space Grotesk',sans-serif; }
 
   /* ---- share modal ---- */
-  .modal-overlay{ position:fixed; inset:0; background:rgba(10,6,3,.82); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
-  .modal-overlay.show{ display:flex; }
+  .modal-overlay{ position:fixed; inset:0; background:rgba(10,6,3,.85); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; backdrop-filter:blur(4px); }
+  .modal-overlay.show{ display:flex; animation:fadeIn .25s ease; }
   .modal-card{ width:100%; max-width:340px; }
-  .modal-card img{ width:100%; border-radius:16px; display:block; box-shadow:0 20px 50px -15px #000; }
+  .modal-card img{ width:100%; border-radius:18px; display:block; box-shadow:0 20px 50px -15px #000; }
   .modal-actions{ display:flex; gap:8px; margin-top:14px; }
-  .modal-actions button, .modal-actions a{ flex:1; text-align:center; padding:12px; border-radius:12px; font-weight:700; font-size:13px; text-decoration:none; cursor:pointer; border:none; font-family:'Space Grotesk',sans-serif; }
+  .modal-actions button, .modal-actions a{ flex:1; text-align:center; padding:12px; border-radius:14px; font-weight:700; font-size:13px; text-decoration:none; cursor:pointer; border:none; font-family:'Space Grotesk',sans-serif; }
   .modal-actions .primary{ background:var(--amber); color:#1B1206; }
-  .modal-actions .secondary{ background:var(--bg-surface); color:var(--cream); border:1px solid var(--line); }
+  .modal-actions .secondary{ background:var(--glass-bg-strong); color:var(--cream); border:1px solid var(--glass-border); }
   .modal-close{ display:block; margin:14px auto 0; background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; }
 
-  @media (prefers-reduced-motion: reduce){ .record{ animation:none; } .reveal{ animation:none; } }
+  @media (prefers-reduced-motion: reduce){
+    .record,.hero-vinyl .disc,.bg-blob{ animation:none !important; }
+    .reveal,.rise,.screen.active{ animation:none !important; opacity:1; transform:none; }
+  }
 </style>
 </head>
 <body>
+<div class="bg-blob b1"></div>
+<div class="bg-blob b2"></div>
+<div class="bg-blob b3"></div>
+
 <div class="app">
 
   <!-- HOME -->
   <section class="screen active" id="screen-home">
-    <div class="topbar">
+    <div class="topbar rise" style="animation-delay:.02s">
       <div class="wordmark">Spin<span>dle</span></div>
-      <div class="stats"><div>Streak<b id="streakVal">0</b></div><div>Best<b id="bestVal">0</b></div></div>
+      <div class="stat-chips">
+        <div class="stat-chip glass">Streak<b id="streakVal">0</b></div>
+        <div class="stat-chip glass">Best<b id="bestVal">0</b></div>
+      </div>
     </div>
-    <p class="tagline">Real songs, played live. No two rounds the same.</p>
 
-    <div class="diff-toggle" id="diffToggle">
+    <div class="hero glass rise" style="animation-delay:.06s">
+      <div class="hero-vinyl"><div class="disc"><div class="lbl"></div></div></div>
+      <h1>Guess the song, live</h1>
+      <p>Real 30-second previews, pulled fresh every round. Pick an artist — Spindle quizzes you on their actual catalog.</p>
+    </div>
+
+    <div class="diff-toggle glass rise" id="diffToggle" style="animation-delay:.1s">
       <button data-diff="classic" class="active">Classic</button>
       <button data-diff="hardcore">Hardcore</button>
     </div>
 
-    <button class="mode-card" id="cardArtist">
-      <span class="icon">🎤</span>
-      <h3>Artist Mode</h3>
-      <p>Pick any artist. Spindle pulls their real catalog and quizzes you on their own songs.</p>
+    <button class="mode-card glass rise" id="cardArtist" style="animation-delay:.14s">
+      <div class="row">
+        <div class="icon-wrap">🎤</div>
+        <div>
+          <h3>Artist Mode</h3>
+          <p>Search any artist, guess their songs</p>
+        </div>
+        <div class="arrow">→</div>
+      </div>
     </button>
 
-    <button class="mode-card" id="cardCharts">
-      <span class="icon">📡</span>
-      <h3>Charts Mode</h3>
-      <p>Live top-50 chart, pulled fresh from the source. Changes as the charts do — pick a region.</p>
-    </button>
+    <div class="section-label rise" style="animation-delay:.18s">Quick start</div>
+    <div class="chip-scroll rise" id="quickChips" style="animation-delay:.2s"></div>
+
+    <div class="section-label rise" style="animation-delay:.24s">How it works</div>
+    <div class="steps rise" style="animation-delay:.28s">
+      <div class="step glass"><div class="num">01</div><div class="txt">Pick an artist — Spindle fetches their <b>real catalog</b> live</div></div>
+      <div class="step glass"><div class="num">02</div><div class="txt">Tap play — you get <b>1 second</b> to start, growing each guess</div></div>
+      <div class="step glass"><div class="num">03</div><div class="txt">Guess right, <b>share your result</b> as a card</div></div>
+    </div>
   </section>
 
   <!-- ARTIST SEARCH -->
   <section class="screen" id="screen-artist">
-    <div class="back-row"><button class="back-btn" data-back="home">←</button><div class="screen-title">Pick an artist</div></div>
-    <div class="search-box">
+    <div class="back-row"><button class="back-btn glass" data-back="home">←</button><div class="screen-title">Pick an artist</div></div>
+    <div class="search-box glass">
       <input id="artistInput" type="text" placeholder="Search an artist…" autocomplete="off">
     </div>
     <div class="result-list" id="artistResults">
@@ -227,22 +315,19 @@
     </div>
   </section>
 
-  <!-- CHARTS REGION -->
-  <section class="screen" id="screen-charts">
-    <div class="back-row"><button class="back-btn" data-back="home">←</button><div class="screen-title">Pick a chart</div></div>
-    <div class="region-grid" id="regionGrid"></div>
-  </section>
-
   <!-- GAME -->
   <section class="screen" id="screen-game">
-    <div class="back-row"><button class="back-btn" data-back="home">←</button><div class="stats" style="margin-left:auto"><div>Streak<b id="streakVal2">0</b></div><div>Best<b id="bestVal2">0</b></div></div></div>
+    <div class="back-row"><button class="back-btn glass" data-back="home">←</button>
+      <div class="stat-chips" style="margin-left:auto">
+        <div class="stat-chip glass">Streak<b id="streakVal2">0</b></div>
+        <div class="stat-chip glass">Best<b id="bestVal2">0</b></div>
+      </div>
+    </div>
     <div class="game-header"><div class="game-context" id="gameContext">—</div></div>
 
     <div class="turntable">
       <div class="mat"></div>
-      <div class="record" id="record">
-        <div class="label"></div>
-      </div>
+      <div class="record" id="record"><div class="label"></div></div>
       <div class="tonearm" id="tonearm">
         <svg viewBox="0 0 100 200">
           <line x1="88" y1="16" x2="20" y2="150" stroke="#C9C2B4" stroke-width="6" stroke-linecap="round"/>
@@ -254,136 +339,4 @@
 
     <div class="play-row">
       <button class="play-btn" id="playBtn" aria-label="Play snippet">
-        <svg viewBox="0 0 24 24" fill="#1B1206"><path d="M8 5v14l11-7z"/></svg>
-      </button>
-    </div>
-
-    <div class="grooves" id="grooves"></div>
-
-    <div class="guess-zone">
-      <div class="guess-row">
-        <input id="guessInput" type="text" placeholder="Type a song title..." autocomplete="off">
-        <button class="btn btn-guess" id="guessBtn">Guess</button>
-      </div>
-      <div class="suggestions" id="suggestions"></div>
-      <button class="btn btn-skip" id="skipBtn">Skip →</button>
-    </div>
-
-    <div class="reveal" id="reveal">
-      <img id="revealImg" alt="">
-      <div class="info"><div class="title" id="revealTitle"></div><div class="artist" id="revealArtist"></div></div>
-      <div class="result-tag" id="resultTag"></div>
-    </div>
-
-    <div class="action-row">
-      <button class="next-btn" id="nextBtn">Next song →</button>
-      <button class="share-btn" id="shareBtn">Share result</button>
-    </div>
-
-    <div class="status" id="status">loading a track…</div>
-    <div class="switch-link"><button id="switchModeBtn">switch mode</button></div>
-  </section>
-
-</div>
-
-<!-- SHARE MODAL -->
-<div class="modal-overlay" id="shareModal">
-  <div class="modal-card">
-    <img id="shareImg" alt="Result card">
-    <div class="modal-actions">
-      <a class="secondary" id="downloadLink" download="spindle-result.png">Save image</a>
-      <button class="primary" id="nativeShareBtn">Share</button>
-    </div>
-    <button class="modal-close" id="closeModal">Close</button>
-  </div>
-</div>
-
-<script>
-(function(){
-  const CLASSIC = [1,2,4,7,11,16];
-  const HARDCORE = [1,1,2,2,3,4];
-  let DURATIONS = CLASSIC;
-  let difficulty = 'classic';
-
-  const REGIONS = [
-    { code:'us', flag:'🇺🇸', name:'USA', sub:'Top 50' },
-    { code:'gb', flag:'🇬🇧', name:'UK', sub:'Top 50' },
-    { code:'kr', flag:'🇰🇷', name:'South Korea', sub:'Top 50' },
-    { code:'mx', flag:'🇲🇽', name:'Mexico', sub:'Top 50' },
-    { code:'jp', flag:'🇯🇵', name:'Japan', sub:'Top 50' },
-    { code:'br', flag:'🇧🇷', name:'Brazil', sub:'Top 50' },
-  ];
-
-  let state = {
-    guessIndex:0, over:false, current:null, audio:null,
-    pool:[], playedRecently:[], mode:null, contextLabel:''
-  };
-
-  const $ = id => document.getElementById(id);
-  const els = {
-    grooves:$('grooves'), playBtn:$('playBtn'), record:$('record'), tonearm:$('tonearm'),
-    input:$('guessInput'), guessBtn:$('guessBtn'), skipBtn:$('skipBtn'), suggestions:$('suggestions'),
-    reveal:$('reveal'), revealImg:$('revealImg'), revealTitle:$('revealTitle'), revealArtist:$('revealArtist'),
-    resultTag:$('resultTag'), nextBtn:$('nextBtn'), shareBtn:$('shareBtn'), status:$('status'),
-    streakVal:$('streakVal'), bestVal:$('bestVal'), streakVal2:$('streakVal2'), bestVal2:$('bestVal2'),
-    gameContext:$('gameContext'), artistInput:$('artistInput'), artistResults:$('artistResults'),
-    regionGrid:$('regionGrid')
-  };
-
-  function norm(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
-
-  function showScreen(id){
-    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-    $('screen-'+id).classList.add('active');
-  }
-  document.querySelectorAll('[data-back]').forEach(b=>{
-    b.addEventListener('click', ()=>showScreen(b.dataset.back));
-  });
-  $('switchModeBtn').addEventListener('click', ()=>{
-    if(state.audio) state.audio.pause();
-    clearTimeout(playSnippet._t);
-    showScreen('home');
-  });
-
-  // ---- difficulty ----
-  $('diffToggle').addEventListener('click', e=>{
-    const b = e.target.closest('button'); if(!b) return;
-    document.querySelectorAll('#diffToggle button').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    difficulty = b.dataset.diff;
-    DURATIONS = difficulty==='hardcore' ? HARDCORE : CLASSIC;
-  });
-
-  // ---- stats ----
-  function loadStats(){
-    const s = localStorage.getItem('spindle_streak') || '0';
-    const b = localStorage.getItem('spindle_best') || '0';
-    els.streakVal.textContent = s; els.bestVal.textContent = b;
-    els.streakVal2.textContent = s; els.bestVal2.textContent = b;
-  }
-  function bumpStreak(win){
-    let streak = parseInt(localStorage.getItem('spindle_streak')||'0',10);
-    let best = parseInt(localStorage.getItem('spindle_best')||'0',10);
-    streak = win ? streak+1 : 0;
-    best = Math.max(best, streak);
-    localStorage.setItem('spindle_streak', streak);
-    localStorage.setItem('spindle_best', best);
-    loadStats();
-  }
-
-  // ================= ARTIST MODE =================
-  let artistDebounce;
-  els.artistInput.addEventListener('input', e=>{
-    clearTimeout(artistDebounce);
-    const q = e.target.value.trim();
-    if(!q){ els.artistResults.innerHTML = '<div class="empty-hint">Start typing an artist name — Drake, Adele, Tame Impala, anyone with music on Apple Music.</div>'; return; }
-    artistDebounce = setTimeout(()=>searchArtists(q), 350);
-  });
-
-  async function searchArtists(q){
-    els.artistResults.innerHTML = '<div class="empty-hint">searching…</div>';
-    try{
-      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=musicArtist&limit=8`);
-      const data = await res.json();
-      const artists = (data.results||[]).filter(a=>a.artistName);
-      if(!artists.length){ els.artistResults.innerHTML = '<div class="empty-hint">No artists found. Try a different spelling.</div
+        <svg viewBox="0 0 24 24" fill="#1B1
