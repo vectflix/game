@@ -7,14 +7,26 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // iTunes' /search endpoint doesn't reliably send CORS headers to deployed
   // sites (it's a known quirk — works on localhost, fails once hosted).
-  // Routing through a keyless public CORS relay fixes it without any API key.
-  function corsUrl(target){
-    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(target);
-  }
+  // No API key involved anywhere here — these are just keyless public relays
+  // that re-serve the same public iTunes response with CORS headers attached.
+  // Free relays have no uptime guarantee, so we try a few in order and fall
+  // back automatically if one is down.
+  const PROXIES = [
+    target => target, // try direct first, in case CORS is fine for this request
+    target => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(target),
+    target => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(target),
+  ];
   async function fetchJSON(target){
-    const res = await fetch(corsUrl(target));
-    if(!res.ok) throw new Error('bad response');
-    return res.json();
+    let lastErr;
+    for(const build of PROXIES){
+      try{
+        const res = await fetch(build(target));
+        if(!res.ok) throw new Error('bad response: ' + res.status);
+        const data = await res.json();
+        if(data) return data;
+      }catch(e){ lastErr = e; }
+    }
+    throw lastErr || new Error('all sources failed');
   }
 
   const QUICK_ARTISTS = ['Drake','Taylor Swift','The Weeknd','Bad Bunny','Billie Eilish','Kendrick Lamar','Dua Lipa','SZA','Tame Impala','Rihanna'];
