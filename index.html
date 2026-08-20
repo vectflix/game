@@ -6,253 +6,7 @@
 <title>Spindle — Guess the Song</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg-deep:#150E09;
-    --amber:#E8A33D;
-    --amber-dim:#8C6A34;
-    --red:#C4432B;
-    --cream:#F3E9DC;
-    --muted:#B3A491;
-    --good:#7FB069;
-    --glass-bg: rgba(255,255,255,0.055);
-    --glass-bg-strong: rgba(255,255,255,0.09);
-    --glass-border: rgba(255,255,255,0.16);
-    --glass-hi: rgba(255,255,255,0.35);
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:#150E09;
-    min-height:100vh;
-    color:var(--cream);
-    font-family:'Space Grotesk', sans-serif;
-    display:flex;
-    justify-content:center;
-    padding:0 0 40px;
-    -webkit-tap-highlight-color:transparent;
-    overflow-x:hidden;
-    position:relative;
-  }
-
-  /* ---- animated background ---- */
-  .bg-blob{
-    position:fixed; border-radius:50%; filter:blur(70px); z-index:0; pointer-events:none;
-    opacity:.55;
-  }
-  .bg-blob.b1{ width:380px;height:380px; background:radial-gradient(circle,#E8A33D,transparent 70%); top:-120px; left:-100px; animation:float1 20s ease-in-out infinite alternate; }
-  .bg-blob.b2{ width:340px;height:340px; background:radial-gradient(circle,#C4432B,transparent 70%); bottom:-80px; right:-100px; animation:float2 24s ease-in-out infinite alternate; }
-  .bg-blob.b3{ width:260px;height:260px; background:radial-gradient(circle,#7FB069,transparent 70%); top:40%; right:-80px; opacity:.25; animation:float3 26s ease-in-out infinite alternate; }
-  @keyframes float1{ from{ transform:translate(0,0); } to{ transform:translate(60px,80px) scale(1.1); } }
-  @keyframes float2{ from{ transform:translate(0,0); } to{ transform:translate(-50px,-60px) scale(1.15); } }
-  @keyframes float3{ from{ transform:translate(0,0); } to{ transform:translate(-40px,50px) scale(0.9); } }
-
-  .app{ width:100%; max-width:460px; padding:22px 18px 0; position:relative; z-index:1; }
-  .screen{ display:none; }
-  .screen.active{ display:block; animation:fadeIn .4s ease; }
-  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
-
-  .rise{ opacity:0; transform:translateY(14px); animation:rise .55s cubic-bezier(.2,.8,.2,1) forwards; }
-  @keyframes rise{ to{ opacity:1; transform:none; } }
-
-  /* ---- glass base ---- */
-  .glass{
-    background: var(--glass-bg);
-    border:1px solid var(--glass-border);
-    backdrop-filter: blur(18px) saturate(150%);
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
-    border-radius:20px;
-    box-shadow: 0 10px 34px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
-    position:relative;
-    overflow:hidden;
-  }
-  .glass::before{
-    content:""; position:absolute; top:0; left:0; right:0; height:1px;
-    background:linear-gradient(90deg,transparent,var(--glass-hi),transparent);
-    opacity:.5;
-  }
-
-  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-  .wordmark{ font-family:'Fraunces', serif; font-weight:700; font-size:27px; }
-  .wordmark span{ color:var(--amber); font-style:italic; }
-  .stat-chips{ display:flex; gap:8px; }
-  .stat-chip{
-    padding:7px 12px; border-radius:14px;
-    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted); text-align:center;
-  }
-  .stat-chip b{ display:block; color:var(--amber); font-size:15px; font-weight:600; transition:transform .25s ease; }
-  .stat-chip b.pulse{ animation:pop .4s ease; }
-  @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.3);} 100%{transform:scale(1);} }
-
-  /* ---- hero ---- */
-  .hero{ padding:26px 22px 24px; margin-bottom:16px; text-align:center; }
-  .hero-vinyl{ width:64px;height:64px; margin:0 auto 14px; position:relative; }
-  .hero-vinyl .disc{
-    width:100%;height:100%;border-radius:50%;
-    background:repeating-radial-gradient(circle at center,#111 0px,#111 2px,#1c1c1c 2px,#1c1c1c 4px);
-    animation:spin 6s linear infinite;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 6px 20px -6px rgba(0,0,0,.6);
-  }
-  .hero-vinyl .lbl{ width:36%;height:36%;border-radius:50%; background:radial-gradient(circle at 40% 35%,#F0B85C,var(--red) 75%); }
-  @keyframes spin{ to{ transform:rotate(360deg); } }
-  .hero h1{ font-family:'Fraunces',serif; font-size:21px; font-weight:600; margin:0 0 8px; }
-  .hero p{ margin:0; font-size:13.5px; color:var(--muted); line-height:1.6; max-width:320px; margin:0 auto; }
-
-  /* ---- difficulty toggle ---- */
-  .diff-toggle{ display:flex; padding:4px; margin-bottom:16px; border-radius:16px; }
-  .diff-toggle button{
-    flex:1; border:none; background:transparent; color:var(--muted);
-    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px;
-    padding:11px 0; border-radius:12px; cursor:pointer; transition:all .25s ease;
-  }
-  .diff-toggle button.active{ background:var(--amber); color:#1B1206; box-shadow:0 4px 14px -4px rgba(232,163,61,.6); }
-
-  /* ---- quick chips ---- */
-  .section-label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:4px 2px 10px; }
-  .chip-scroll{ display:flex; gap:9px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:6px; scrollbar-width:none; }
-  .chip-scroll::-webkit-scrollbar{ display:none; }
-  .quick-chip{
-    flex:0 0 auto; padding:10px 16px; border-radius:14px; cursor:pointer;
-    font-size:13px; font-weight:600; color:var(--cream); white-space:nowrap;
-    transition: transform .15s ease, background .2s ease;
-  }
-  .quick-chip:active{ transform:scale(.94); background:var(--glass-bg-strong); }
-
-  /* ---- mode card (hero CTA) ---- */
-  .mode-card{
-    display:block; width:100%; text-align:left; padding:22px; margin-bottom:18px;
-    cursor:pointer; color:var(--cream); border:none; font-family:inherit;
-    transition: transform .18s ease, box-shadow .18s ease;
-  }
-  .mode-card:active{ transform:scale(.985); }
-  .mode-card .row{ display:flex; align-items:center; gap:14px; }
-  .mode-card .icon-wrap{
-    width:52px;height:52px;border-radius:16px; flex-shrink:0;
-    background: linear-gradient(135deg, var(--amber), var(--red));
-    display:flex;align-items:center;justify-content:center; font-size:24px;
-    box-shadow: 0 6px 18px -6px rgba(232,163,61,.5);
-  }
-  .mode-card h3{ font-family:'Fraunces',serif; font-size:18px; margin:0 0 3px; font-weight:600; }
-  .mode-card p{ margin:0; font-size:12.5px; color:var(--muted); line-height:1.5; }
-  .mode-card .arrow{ margin-left:auto; opacity:.5; font-size:18px; }
-
-  /* ---- how it works ---- */
-  .steps{ display:flex; flex-direction:column; gap:10px; margin-bottom:6px; }
-  .step{ display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:16px; }
-  .step .num{
-    width:30px;height:30px;border-radius:10px; flex-shrink:0;
-    background:var(--glass-bg-strong); color:var(--amber); font-family:'IBM Plex Mono',monospace;
-    font-weight:600; font-size:13px; display:flex;align-items:center;justify-content:center;
-  }
-  .step .txt{ font-size:13px; color:var(--cream); }
-  .step .txt b{ color:var(--amber); }
-
-  .back-row{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
-  .back-btn{
-    width:38px;height:38px;border-radius:12px; cursor:pointer; font-size:16px; color:var(--cream);
-    display:flex;align-items:center;justify-content:center; border:1px solid var(--glass-border);
-    background:var(--glass-bg);
-  }
-  .screen-title{ font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
-
-  /* ---- search ---- */
-  .search-box{ padding:14px 16px; display:flex; gap:8px; align-items:center; margin-bottom:14px; }
-  .search-box input{ flex:1; background:transparent; border:none; outline:none; color:var(--cream); font-family:'Space Grotesk',sans-serif; font-size:15px; }
-  .result-list{ display:flex; flex-direction:column; gap:8px; }
-  .result-item{ padding:13px 15px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:transform .15s ease; }
-  .result-item:active{ transform:scale(.98); background:var(--glass-bg-strong); }
-  .result-item .name{ font-weight:600; font-size:14.5px; }
-  .result-item .type{ font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace; }
-  .empty-hint{ color:var(--muted); font-size:13px; text-align:center; padding:30px 14px; line-height:1.6; }
-
-  /* ---- turntable ---- */
-  .game-header{ text-align:center; margin-bottom:6px; }
-  .game-context{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber); letter-spacing:.03em; }
-  .turntable{ position:relative; width:100%; aspect-ratio:1/1; max-width:280px; margin:6px auto 8px; display:flex; align-items:center; justify-content:center; }
-  .mat{ position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 35% 30%, #3A2716, #1B120B 70%); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), 0 18px 40px -12px #000; }
-  .record{ position:relative; width:82%; height:82%; border-radius:50%; background:repeating-radial-gradient(circle at center, #111 0px,#111 2px,#1c1c1c 2px,#1c1c1c 4px); box-shadow:0 0 0 1px #000; display:flex; align-items:center; justify-content:center; animation:spin2 3.2s linear infinite; animation-play-state:paused; }
-  .record.spinning{ animation-play-state:running; }
-  .label{ width:38%; height:38%; border-radius:50%; background:radial-gradient(circle at 40% 35%, #F0B85C, var(--red) 75%); display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #170F09; }
-  .label::after{ content:""; width:9px;height:9px;border-radius:50%; background:#170F09; }
-  .tonearm{ position:absolute; top:-4%; right:2%; width:34%; height:65%; transform-origin:88% 8%; transform:rotate(-24deg); transition:transform .5s cubic-bezier(.4,0,.2,1); pointer-events:none; }
-  .tonearm.down{ transform:rotate(-2deg); }
-  .tonearm svg{ width:100%; height:100%; overflow:visible; }
-  @keyframes spin2{ to{ transform:rotate(360deg); } }
-
-  .play-row{ display:flex; justify-content:center; margin:14px 0 6px; }
-  .play-btn{ width:66px;height:66px;border-radius:50%; background:var(--amber); border:none; display:flex;align-items:center;justify-content:center; cursor:pointer; box-shadow:0 8px 22px -6px rgba(232,163,61,.6); transition:transform .15s ease; }
-  .play-btn:active{ transform:scale(.9); }
-  .play-btn:disabled{ opacity:.4; cursor:default; }
-  .play-btn svg{ width:24px;height:24px; }
-  .play-btn.pulse-ring{ animation:ring 1.4s ease-out; }
-  @keyframes ring{ 0%{ box-shadow:0 0 0 0 rgba(232,163,61,.6); } 100%{ box-shadow:0 0 0 24px rgba(232,163,61,0); } }
-
-  .grooves{ display:flex; gap:6px; margin:18px 0 4px; }
-  .groove{ flex:1; height:34px; border-radius:8px; position:relative; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; border:1px solid var(--glass-border); background:var(--glass-bg); }
-  .groove span{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); margin-bottom:3px; z-index:2; }
-  .groove .fill{ position:absolute; left:0; right:0; bottom:0; top:100%; background:linear-gradient(180deg,var(--amber),var(--amber-dim)); transition:top .3s ease; }
-  .groove.played .fill{ top:0; }
-  .groove.played span{ color:#3A2A10; font-weight:600; }
-  .groove.current{ border-color:var(--amber); }
-  .groove.miss .fill{ background:linear-gradient(180deg,#6E4A3A,#4A3226); }
-  .groove.miss.played span{ color:var(--cream); }
-
-  .guess-zone{ margin-top:20px; position:relative; }
-  .guess-row{ display:flex; gap:8px; }
-  input#guessInput{ flex:1; border:1px solid var(--glass-border); background:var(--glass-bg); color:var(--cream); font-family:'Space Grotesk',sans-serif; font-size:15px; padding:14px; border-radius:14px; outline:none; transition:border-color .2s ease; }
-  input#guessInput:focus{ border-color:var(--amber); }
-  input#guessInput:disabled{ opacity:.5; }
-  .btn{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; border:none; border-radius:14px; padding:0 18px; cursor:pointer; white-space:nowrap; transition:transform .15s ease; }
-  .btn:active{ transform:scale(.94); }
-  .btn-guess{ background:var(--amber); color:#1B1206; }
-  .btn-guess:disabled{ opacity:.4; }
-  .btn-skip{ background:var(--glass-bg); border:1px solid var(--glass-border); color:var(--muted); margin-top:8px; width:100%; padding:12px; border-radius:14px; }
-  .btn-skip:disabled{ opacity:.3; }
-
-  .suggestions{ position:absolute; top:calc(100% + 6px); left:0; right:0; border-radius:14px; overflow:hidden; z-index:5; max-height:220px; overflow-y:auto; display:none; }
-  .suggestions.open{ display:block; animation:rise .2s ease forwards; }
-  .suggestion{ padding:12px 15px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--glass-border); }
-  .suggestion:last-child{ border-bottom:none; }
-  .suggestion b{ color:var(--amber); font-weight:600; }
-  .suggestion:active{ background:var(--glass-bg-strong); }
-
-  .reveal{ margin-top:18px; background:linear-gradient(90deg,var(--red),#8E2E1D); border-radius:16px; padding:14px 16px; display:none; align-items:center; gap:12px; animation:slideIn .45s cubic-bezier(.2,.8,.2,1); }
-  .reveal.show{ display:flex; }
-  @keyframes slideIn{ from{ transform:translateX(30px); opacity:0;} to{ transform:none; opacity:1;} }
-  .reveal img{ width:44px;height:44px;border-radius:8px; flex-shrink:0; background:#000; }
-  .reveal .info{ min-width:0; }
-  .reveal .title{ font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .reveal .artist{ font-size:12.5px; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .reveal .result-tag{ margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; background:rgba(0,0,0,.28); padding:4px 8px; border-radius:8px; flex-shrink:0; }
-
-  .action-row{ display:flex; gap:8px; margin-top:12px; }
-  .next-btn, .share-btn{ flex:1; padding:13px; border-radius:14px; font-weight:700; display:none; border:none; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:transform .15s ease; }
-  .next-btn:active, .share-btn:active{ transform:scale(.96); }
-  .next-btn{ background:var(--cream); color:#1B1206; }
-  .share-btn{ background:var(--glass-bg); border:1px solid var(--amber); color:var(--amber); }
-  .next-btn.show, .share-btn.show{ display:block; }
-
-  .status{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--muted); margin-top:14px; min-height:16px; }
-  .switch-link{ text-align:center; margin-top:20px; }
-  .switch-link button{ background:none; border:none; color:var(--muted); font-size:12px; text-decoration:underline; cursor:pointer; font-family:'Space Grotesk',sans-serif; }
-
-  /* ---- share modal ---- */
-  .modal-overlay{ position:fixed; inset:0; background:rgba(10,6,3,.85); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; backdrop-filter:blur(4px); }
-  .modal-overlay.show{ display:flex; animation:fadeIn .25s ease; }
-  .modal-card{ width:100%; max-width:340px; }
-  .modal-card img{ width:100%; border-radius:18px; display:block; box-shadow:0 20px 50px -15px #000; }
-  .modal-actions{ display:flex; gap:8px; margin-top:14px; }
-  .modal-actions button, .modal-actions a{ flex:1; text-align:center; padding:12px; border-radius:14px; font-weight:700; font-size:13px; text-decoration:none; cursor:pointer; border:none; font-family:'Space Grotesk',sans-serif; }
-  .modal-actions .primary{ background:var(--amber); color:#1B1206; }
-  .modal-actions .secondary{ background:var(--glass-bg-strong); color:var(--cream); border:1px solid var(--glass-border); }
-  .modal-close{ display:block; margin:14px auto 0; background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; }
-
-  @media (prefers-reduced-motion: reduce){
-    .record,.hero-vinyl .disc,.bg-blob{ animation:none !important; }
-    .reveal,.rise,.screen.active{ animation:none !important; opacity:1; transform:none; }
-  }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="bg-blob b1"></div>
@@ -339,4 +93,51 @@
 
     <div class="play-row">
       <button class="play-btn" id="playBtn" aria-label="Play snippet">
-        <svg viewBox="0 0 24 24" fill="#1B1
+        <svg viewBox="0 0 24 24" fill="#1B1206"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
+
+    <div class="grooves" id="grooves"></div>
+
+    <div class="guess-zone">
+      <div class="guess-row">
+        <input id="guessInput" type="text" placeholder="Type a song title..." autocomplete="off">
+        <button class="btn btn-guess" id="guessBtn">Guess</button>
+      </div>
+      <div class="suggestions glass" id="suggestions"></div>
+      <button class="btn btn-skip" id="skipBtn">Skip →</button>
+    </div>
+
+    <div class="reveal" id="reveal">
+      <img id="revealImg" alt="">
+      <div class="info"><div class="title" id="revealTitle"></div><div class="artist" id="revealArtist"></div></div>
+      <div class="result-tag" id="resultTag"></div>
+    </div>
+
+    <div class="action-row">
+      <button class="next-btn" id="nextBtn">Next song →</button>
+      <button class="share-btn" id="shareBtn">Share result</button>
+    </div>
+
+    <div class="status" id="status">loading a track…</div>
+    <div class="switch-link"><button id="switchModeBtn">switch mode</button></div>
+  </section>
+
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal-card">
+    <img id="shareImg" alt="Result card">
+    <div class="modal-actions">
+      <a class="secondary" id="downloadLink" download="spindle-result.png">Save image</a>
+      <button class="primary" id="nativeShareBtn">Share</button>
+    </div>
+    <button class="modal-close" id="closeModal">Close</button>
+  </div>
+</div>
+
+
+<script src="script.js"></script>
+</body>
+</html>
