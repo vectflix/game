@@ -5,28 +5,24 @@ document.addEventListener('DOMContentLoaded', function(){
   let DURATIONS = CLASSIC;
   let difficulty = 'classic';
 
-  // iTunes' /search endpoint doesn't reliably send CORS headers to deployed
-  // sites (it's a known quirk — works on localhost, fails once hosted).
-  // No API key involved anywhere here — these are just keyless public relays
-  // that re-serve the same public iTunes response with CORS headers attached.
-  // Free relays have no uptime guarantee, so we try a few in order and fall
-  // back automatically if one is down.
-  const PROXIES = [
-    target => target, // try direct first, in case CORS is fine for this request
-    target => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(target),
-    target => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(target),
-  ];
-  async function fetchJSON(target){
-    let lastErr;
-    for(const build of PROXIES){
-      try{
-        const res = await fetch(build(target));
-        if(!res.ok) throw new Error('bad response: ' + res.status);
-        const data = await res.json();
-        if(data) return data;
-      }catch(e){ lastErr = e; }
-    }
-    throw lastErr || new Error('all sources failed');
+  // Music data comes from Deezer's public search API — no key required.
+  // Deezer natively supports JSONP (a <script>-tag callback, not a fetch/XHR
+  // call) specifically so browser apps can call it directly, which sidesteps
+  // the CORS problem entirely instead of depending on a third-party proxy
+  // that can go down on its own.
+  function jsonp(url){
+    return new Promise((resolve, reject)=>{
+      const cbName = 'dzcb_' + Math.random().toString(36).slice(2);
+      const script = document.createElement('script');
+      let done = false;
+      const cleanup = ()=>{ delete window[cbName]; script.remove(); };
+      window[cbName] = data => { if(done) return; done = true; cleanup(); resolve(data); };
+      script.onerror = () => { if(done) return; done = true; cleanup(); reject(new Error('jsonp load failed')); };
+      const sep = url.includes('?') ? '&' : '?';
+      script.src = url + sep + 'output=jsonp&callback=' + cbName;
+      document.body.appendChild(script);
+      setTimeout(()=>{ if(done) return; done = true; cleanup(); reject(new Error('jsonp timeout')); }, 9000);
+    });
   }
 
   const QUICK_ARTISTS = ['Drake','Taylor Swift','The Weeknd','Bad Bunny','Billie Eilish','Kendrick Lamar','Dua Lipa','SZA','Tame Impala','Rihanna'];
@@ -83,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function(){
     chip.addEventListener('click', ()=>{
       showScreen('artist');
       els.artistResults.innerHTML = '<div class="empty-hint">cueing up '+name+'\'s catalog…</div>';
-      selectArtist(name);
+      selectArtist(null, name);
     });
     els.quickChips.appendChild(chip);
   });
@@ -94,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const name = QUICK_ARTISTS[Math.floor(Math.random()*QUICK_ARTISTS.length)];
     showScreen('artist');
     els.artistResults.innerHTML = '<div class="empty-hint">cueing up '+name+'\'s catalog…</div>';
-    selectArtist(name);
+    selectArtist(null, name);
   });
   els.quickChips.appendChild(surpriseChip);
 
@@ -123,22 +119,22 @@ document.addEventListener('DOMContentLoaded', function(){
   els.artistInput.addEventListener('input', e=>{
     clearTimeout(artistDebounce);
     const q = e.target.value.trim();
-    if(!q){ els.artistResults.innerHTML = '<div class="empty-hint">Start typing an artist name — Drake, Adele, Tame Impala, anyone with music on Apple Music.</div>'; return; }
+    if(!q){ els.artistResults.innerHTML = '<div class="empty-hint">Start typing an artist name — Drake, Adele, Tame Impala, anyone on Deezer.</div>'; return; }
     artistDebounce = setTimeout(()=>searchArtists(q), 350);
   });
 
   async function searchArtists(q){
     els.artistResults.innerHTML = '<div class="empty-hint">searching…</div>';
     try{
-      const data = await fetchJSON(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=musicArtist&limit=8`);
-      const artists = (data.results||[]).filter(a=>a.artistName);
+      const data = await jsonp(`https://api.deezer.com/search/artist?q=${encodeURIComponent(q)}&limit=8`);
+      const artists = (data.data||[]).filter(a=>a.name);
       if(!artists.length){ els.artistResults.innerHTML = '<div class="empty-hint">No artists found. Try a different spelling.</div>'; return; }
       els.artistResults.innerHTML = '';
       artists.forEach(a=>{
         const row = document.createElement('div');
         row.className = 'result-item glass';
-        row.innerHTML = `<div><div class="name">${a.artistName}</div><div class="type">${a.primaryGenreName||'Artist'}</div></div><div>→</div>`;
-        row.addEventListener('click', ()=>selectArtist(a.artistName));
+        row.innerHTML = `<div><div class="name">${a.name}</div><div class="type">${(a.nb_fan||0).toLocaleString()} fans</div></div><div>→</div>`;
+        row.addEventListener('click', ()=>selectArtist(a.id, a.name));
         els.artistResults.appendChild(row);
       });
     }catch(e){
@@ -146,19 +142,25 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }
 
-  async function selectArtist(name){
+  async function selectArtist(artistId, name){
     els.artistResults.innerHTML = '<div class="empty-hint">cueing up '+name+'\'s catalog…</div>';
     try{
-      const data = await fetchJSON(`https://itunes.apple.com/search?term=${encodeURIComponent(name)}&entity=song&attribute=artistTerm&limit=50`);
+      // quick-start chips pass a name only — resolve the artist id first
+      if(artistId == null){
+        const found = await jsonp(`https://api.deezer.com/search/artist?q=${encodeURIComponent(name)}&limit=1`);
+        const match = found.data && found.data[0];
+        if(!match){ els.artistResults.innerHTML = '<div class="empty-hint">Couldn\'t find '+name+'. Try another artist.</div>'; return; }
+        artistId = match.id;
+      }
+      const data = await jsonp(`https://api.deezer.com/artist/${artistId}/top?limit=50`);
       const seen = new Set();
-      const tracks = (data.results||[]).filter(t=>{
-        if(!t.previewUrl) return false;
-        if(t.artistName.toLowerCase() !== name.toLowerCase()) return false;
-        const key = norm(t.trackName);
+      const tracks = (data.data||[]).filter(t=>{
+        if(!t.preview) return false;
+        const key = norm(t.title);
         if(seen.has(key)) return false;
         seen.add(key);
         return true;
-      }).map(t=>({ title:t.trackName, artist:t.artistName, previewUrl:t.previewUrl, artwork:t.artworkUrl100.replace('100x100','400x400') }));
+      }).map(t=>({ title:t.title, artist:t.artist.name, previewUrl:t.preview, artwork:t.album.cover_medium }));
 
       if(tracks.length < 4){
         els.artistResults.innerHTML = '<div class="empty-hint">Not enough previewable tracks for '+name+'. Try another artist.</div>';
