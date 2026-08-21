@@ -242,4 +242,4 @@
   @media (prefers-reduced-motion: reduce){
     .record,.hero-vinyl .disc,.bg-blob{ animation:none !important; }
     .reveal,.rise,.screen.active{ animation:none !important; opacity:1; transform:none; }
-  }
+          }
