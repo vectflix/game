@@ -1,34 +1,26 @@
-// Minimal service worker — its only real job is to exist, since Chrome/Android
-// require a registered service worker with a fetch handler before it will
-// offer the native "Install app" prompt. It also caches the app shell so the
-// game still opens (menu screen) if you're briefly offline; actual song data
-// and audio always come from the network since that's the whole point of the
-// game — real, live songs.
-const CACHE = 'spindle-shell-v1';
-const SHELL_FILES = ['./', './index.html', './style.css', './script.js', './manifest.json'];
+// Minimal service worker. Its only job is to exist and be registered, since
+// that's one of the checks Chrome/Android use before offering the native
+// "Install app" prompt.
+//
+// Deliberately NOT caching any files here. A caching service worker can get
+// stuck serving an old, broken version of the site indefinitely — a normal
+// browser refresh (even a hard refresh) does NOT clear it, only an explicit
+// "unregister service worker" / clear-site-data action does. That's a bad
+// trade while this app is still being actively changed, so every request
+// just passes straight through to the network.
+const CACHE_VERSION = 'spindle-v2-nocache';
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(SHELL_FILES)).catch(()=>{})
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
+  // Clean up any caches a previous version of this service worker created.
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
   );
   self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  const url = event.request.url;
-  // Never intercept song data/audio/API calls — only the static app shell.
-  if(!SHELL_FILES.some(f => url.endsWith(f.replace('./','/')) || url.endsWith(f))){
-    return;
-  }
-  event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
-  );
-});
-
+// No fetch handler at all — every request goes straight to the network,
+// exactly as if there were no service worker in the way.
