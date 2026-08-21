@@ -194,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function startGame({mode, pool, contextLabel}){
     state.mode = mode; state.pool = pool; state.contextLabel = contextLabel; state.playedRecently = [];
+    state.sessionHistory = [];
     els.gameContext.textContent = contextLabel + ' · ' + (difficulty==='hardcore'?'Hardcore':'Classic');
     showScreen('game');
     newRound();
@@ -273,6 +274,7 @@ document.addEventListener('DOMContentLoaded', function(){
     els.shareBtn.classList.add('show');
     els.status.textContent = win ? 'nice ear.' : 'better luck next spin.';
     state.lastResult = { win, seconds: DURATIONS[state.guessIndex] };
+    state.sessionHistory.push({ title:s.title, artist:s.artist, win, seconds: DURATIONS[state.guessIndex] });
     bumpStreak(win);
   }
 
@@ -333,63 +335,136 @@ document.addEventListener('DOMContentLoaded', function(){
     ctx.restore();
   }
 
+  function truncateText(ctx, text, maxWidth){
+    if(ctx.measureText(text).width <= maxWidth) return text;
+    let t = text;
+    while(t.length > 1 && ctx.measureText(t + '…').width > maxWidth){ t = t.slice(0, -1); }
+    return t + '…';
+  }
+
+  function drawCheckIcon(ctx, cx, cy, s, ok){
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, s, 0, Math.PI*2);
+    ctx.fillStyle = ok ? 'rgba(127,176,105,0.18)' : 'rgba(196,67,43,0.18)';
+    ctx.fill();
+    ctx.strokeStyle = ok ? '#7FB069' : '#C4432B';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    if(ok){
+      ctx.moveTo(cx - s*0.45, cy);
+      ctx.lineTo(cx - s*0.1, cy + s*0.4);
+      ctx.lineTo(cx + s*0.5, cy - s*0.4);
+    } else {
+      ctx.moveTo(cx - s*0.4, cy - s*0.4); ctx.lineTo(cx + s*0.4, cy + s*0.4);
+      ctx.moveTo(cx + s*0.4, cy - s*0.4); ctx.lineTo(cx - s*0.4, cy + s*0.4);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function buildShareCanvas(){
+    const W = 640;
+    const history = state.sessionHistory || [];
+    const total = history.length;
+    const wins = history.filter(h=>h.win).length;
+    const pct = total ? Math.round((wins/total)*100) : 0;
+
+    const MAX_ROWS = 12;
+    const shown = history.slice(-MAX_ROWS).reverse(); // most recent first
+    const overflow = total - shown.length;
+
+    const headerH = 300;
+    const rowH = 46;
+    const listH = shown.length * rowH + (overflow > 0 ? 34 : 0) + 20;
+    const footerH = 110;
+    const H = headerH + listH + footerH;
+
     const canvas = document.createElement('canvas');
-    canvas.width = 640; canvas.height = 800;
+    canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
-    const grad = ctx.createLinearGradient(0,0,640,800);
+
+    const grad = ctx.createLinearGradient(0,0,W,H);
     grad.addColorStop(0,'#2A1B10'); grad.addColorStop(1,'#150E09');
-    ctx.fillStyle = grad; ctx.fillRect(0,0,640,800);
+    ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#E8A33D';
-    ctx.font = 'italic 700 30px Georgia, serif';
-    ctx.fillText('Spindle', 320, 70);
-
-    drawVinylIcon(ctx, 320, 250, 130);
-
-    const r = state.lastResult || {win:false, seconds:DURATIONS[DURATIONS.length-1]};
-    ctx.fillStyle = r.win ? '#7FB069' : '#C4432B';
-    ctx.font = '700 20px Arial, sans-serif';
-    ctx.fillText(r.win ? ('SOLVED IN ' + r.seconds + 's') : 'MISSED', 320, 430);
-
-    ctx.fillStyle = '#F3E9DC';
-    ctx.font = '700 30px Georgia, serif';
-    wrapText(ctx, state.current.title, 320, 480, 560, 36);
+    ctx.font = 'italic 700 28px Georgia, serif';
+    ctx.fillText('Spindle', W/2, 56);
 
     ctx.fillStyle = '#B3A491';
-    ctx.font = '400 18px Arial, sans-serif';
-    ctx.fillText(state.current.artist, 320, 530);
+    ctx.font = '400 14px Arial, sans-serif';
+    ctx.fillText(truncateText(ctx, state.contextLabel || '', W-80), W/2, 82);
 
-    ctx.strokeStyle = 'rgba(232,163,61,0.3)';
-    ctx.beginPath(); ctx.moveTo(120,590); ctx.lineTo(520,590); ctx.stroke();
+    drawVinylIcon(ctx, W/2, 150, 62);
+
+    ctx.fillStyle = pct>=60 ? '#7FB069' : (pct>=30 ? '#E8A33D' : '#C4432B');
+    ctx.font = '700 46px Arial, sans-serif';
+    ctx.fillText(pct + '%', W/2, 245);
 
     ctx.fillStyle = '#F3E9DC';
-    ctx.font = '400 15px Arial, sans-serif';
-    ctx.fillText(state.contextLabel, 320, 630);
+    ctx.font = '600 16px Arial, sans-serif';
+    ctx.fillText(wins + ' solved · ' + (total-wins) + ' missed · ' + total + ' played', W/2, 275);
+
+    // progress bar
+    const barW = 420, barX = W/2 - barW/2, barY = 292, barHt = 8;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    roundRect(ctx, barX, barY, barW, barHt, 4); ctx.fill();
+    ctx.fillStyle = '#E8A33D';
+    roundRect(ctx, barX, barY, barW*(pct/100), barHt, 4); ctx.fill();
+
+    // list
+    let y = headerH;
+    ctx.textAlign = 'left';
+    shown.forEach(entry=>{
+      const rowY = y + rowH/2;
+      drawCheckIcon(ctx, 60, rowY, 15, entry.win);
+      ctx.fillStyle = '#F3E9DC';
+      ctx.font = '600 17px Arial, sans-serif';
+      const title = truncateText(ctx, entry.title, 380);
+      ctx.fillText(title, 92, rowY - 6);
+      ctx.fillStyle = '#8C7A68';
+      ctx.font = '400 13px Arial, sans-serif';
+      ctx.fillText(truncateText(ctx, entry.artist, 380), 92, rowY + 14);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = entry.win ? '#7FB069' : '#C4432B';
+      ctx.font = '600 13px Arial, sans-serif';
+      ctx.fillText(entry.win ? (entry.seconds + 's') : '—', W-40, rowY + 4);
+      ctx.textAlign = 'left';
+      y += rowH;
+    });
+    if(overflow > 0){
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#6E5B48';
+      ctx.font = '400 13px Arial, sans-serif';
+      ctx.fillText('+ ' + overflow + ' earlier this session', W/2, y + 22);
+      y += 34;
+    }
+
+    ctx.strokeStyle = 'rgba(232,163,61,0.25)';
+    ctx.beginPath(); ctx.moveTo(120, y+16); ctx.lineTo(W-120, y+16); ctx.stroke();
 
     const streak = localStorage.getItem('spindle_streak') || '0';
+    ctx.textAlign = 'center';
     ctx.fillStyle = '#E8A33D';
-    ctx.font = '700 16px Arial, sans-serif';
-    ctx.fillText('Streak: ' + streak, 320, 662);
+    ctx.font = '700 15px Arial, sans-serif';
+    ctx.fillText('Current streak: ' + streak, W/2, y + 50);
 
     ctx.fillStyle = '#6E5B48';
     ctx.font = '400 12px Arial, sans-serif';
-    ctx.fillText('guess the song, live · real audio every round', 320, 750);
+    ctx.fillText('guess the song, live · real audio every round', W/2, y + 78);
 
     return canvas;
   }
-  function wrapText(ctx, text, x, y, maxWidth, lineHeight){
-    const words = text.split(' ');
-    let line = ''; const lines = [];
-    words.forEach(w=>{
-      const test = line + w + ' ';
-      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w + ' '; }
-      else line = test;
-    });
-    lines.push(line);
-    const startY = y - (lines.length-1)*lineHeight/2;
-    lines.forEach((l,i)=> ctx.fillText(l.trim(), x, startY + i*lineHeight));
+  function roundRect(ctx, x, y, w, h, r){
+    if(w <= 0) w = 0.001;
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
   }
 
   els.shareBtn.addEventListener('click', ()=>{
@@ -407,12 +482,4 @@ document.addEventListener('DOMContentLoaded', function(){
         } else {
           $('downloadLink').click();
         }
-      }catch(e){ $('downloadLink').click(); }
-    };
-  });
-  $('closeModal').addEventListener('click', ()=> $('shareModal').classList.remove('show'));
-  $('shareModal').addEventListener('click', e=>{ if(e.target.id==='shareModal') $('shareModal').classList.remove('show'); });
-
-  loadStats();
-})();
-});
+      }catch(e){ $('downloadLink').c
